@@ -13,29 +13,32 @@
     font-family: Arial, sans-serif;
   }
 
+  /* Container geral com coluna */
   .container-geral {
     display: flex;
-    flex-direction: column; /* empilha tudo verticalmente */
+    flex-direction: column;
     height: 100vh;
   }
 
-  .sidebar {
-    width: 100%;
+  /* Controles no topo */
+  .controles {
     background: #f9f9f9;
     border-bottom: 1px solid #ccc;
     padding: 10px;
-    box-sizing: border-box;
-  }
-
-  .controles {
     display: flex;
-    flex-direction: column;
     gap: 10px;
+    align-items: center;
+    box-sizing: border-box;
+
+    position: sticky;
+    top: 0;
+    z-index: 1000;
   }
 
   .controles h3 {
-    margin: 0 0 10px 0;
+    margin: 0;
     font-size: 1.1rem;
+    white-space: nowrap;
   }
 
   .controles select {
@@ -43,6 +46,7 @@
     padding: 4px;
   }
 
+  /* Painel que ocupa o resto da tela */
   .painel {
     flex: 1;
     display: flex;
@@ -53,6 +57,7 @@
     overflow-y: auto;
   }
 
+  /* Altura mínima para cada container de mapa/gráfico */
   #mapa,
   #grafico-linhas,
   #grafico-barras,
@@ -64,20 +69,21 @@
 </head>
 <body>
   <div class="container-geral">
-    <div class="sidebar">
-      <div class="controles">
-        <h3>Comparador</h3>
-        <select id="municipio-select"><option value="">Município</option></select>
-        <select id="cargo-select"><option value="">Cargo</option></select>
-        <select id="candidato1-select"><option value="">1º Candidato</option></select>
-        <select id="candidato2-select"><option value="">2º Candidato</option></select>
-      </div>
+    <!-- CONTROLES NO TOPO -->
+    <div class="controles">
+      <h3>Comparador</h3>
+      <select id="municipio-select"><option value="">Município</option></select>
+      <select id="cargo-select"><option value="">Cargo</option></select>
+      <select id="candidato1-select"><option value="">1º Candidato</option></select>
+      <select id="candidato2-select"><option value="">2º Candidato</option></select>
     </div>
+
+    <!-- PAINEL COM MAPA E GRÁFICOS -->
     <div class="painel">
       <div id="mapa"></div>
-      <div id="grafico-linhas"></div>   <!-- gráfico de linha -->
-      <div id="grafico-barras"></div>   <!-- gráfico de barras -->
-      <div id="grafico-pres-sen"></div> <!-- presidente e senador -->
+      <div id="grafico-linhas"></div>
+      <div id="grafico-barras"></div>
+      <div id="grafico-pres-sen"></div>
     </div>
   </div>
 
