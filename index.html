@@ -7,74 +7,80 @@
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
-  <style>
-    body {
-      margin: 0;
-      font-family: Arial, sans-serif;
-    }
+<style>
+  body {
+    margin: 0;
+    font-family: Arial, sans-serif;
+  }
 
+  .container-geral {
+    display: flex;
+    flex-direction: row;
+    height: 100vh;
+  }
+
+  .sidebar {
+    width: 220px;
+    background: #f9f9f9;
+    border-right: 1px solid #ccc;
+    padding: 10px;
+    box-sizing: border-box;
+  }
+
+  .controles {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .controles h3 {
+    margin: 0 0 10px 0;
+    font-size: 1.1rem;
+  }
+
+  .controles select {
+    font-size: 0.9rem;
+    padding: 4px;
+  }
+
+  .painel {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+  }
+
+  #mapa,
+  #grafico-barras,
+  #grafico-pres-sen,
+  #grafico-linhas {
+    width: 100%;
+    flex: 1;
+    min-height: 300px;
+  }
+
+  @media (max-width: 768px) {
     .container-geral {
-      display: flex;
-      height: 100vh;
+      flex-direction: column;
     }
 
     .sidebar {
-      width: 220px;
-      background: #f9f9f9;
-      border-right: 1px solid #ccc;
-      padding: 10px;
-      box-sizing: border-box;
-    }
-
-    .controles {
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-    }
-
-    .controles h3 {
-      margin: 0 0 10px 0;
-      font-size: 1.1rem;
-    }
-
-    .controles select {
-      font-size: 0.9rem;
-      padding: 4px;
+      width: 100%;
+      border-right: none;
+      border-bottom: 1px solid #ccc;
     }
 
     .painel {
-      flex: 1;
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      grid-template-rows: 50% 50%;
+      flex-direction: column;
     }
 
-    #mapa, #grafico-barras, #grafico-pres-sen, #grafico-linhas {
-      width: 100%;
-      height: 100%;
+    #mapa,
+    #grafico-barras,
+    #grafico-pres-sen,
+    #grafico-linhas {
+      min-height: 300px;
     }
-
-    @media (max-width: 768px) {
-      .container-geral {
-        flex-direction: column;
-      }
-
-      .sidebar {
-        width: 100%;
-        border-right: none;
-        border-bottom: 1px solid #ccc;
-      }
-
-      .painel {
-        grid-template-columns: 1fr;
-        grid-template-rows: auto auto auto auto;
-      }
-
-      #mapa, #grafico-barras, #grafico-pres-sen, #grafico-linhas {
-        height: 300px;
-      }
-    }
-  </style>
+  }
+</style>
 </head>
 <body>
   <div class="container-geral">
