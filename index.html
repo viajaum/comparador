@@ -15,14 +15,14 @@
 
   .container-geral {
     display: flex;
-    flex-direction: row;
+    flex-direction: column; /* empilha tudo verticalmente */
     height: 100vh;
   }
 
   .sidebar {
-    width: 220px;
+    width: 100%;
     background: #f9f9f9;
-    border-right: 1px solid #ccc;
+    border-bottom: 1px solid #ccc;
     padding: 10px;
     box-sizing: border-box;
   }
@@ -47,38 +47,18 @@
     flex: 1;
     display: flex;
     flex-direction: column;
+    gap: 10px;
+    padding: 10px;
+    box-sizing: border-box;
+    overflow-y: auto;
   }
 
   #mapa,
+  #grafico-linhas,
   #grafico-barras,
-  #grafico-pres-sen,
-  #grafico-linhas {
+  #grafico-pres-sen {
     width: 100%;
-    flex: 1;
     min-height: 300px;
-  }
-
-  @media (max-width: 768px) {
-    .container-geral {
-      flex-direction: column;
-    }
-
-    .sidebar {
-      width: 100%;
-      border-right: none;
-      border-bottom: 1px solid #ccc;
-    }
-
-    .painel {
-      flex-direction: column;
-    }
-
-    #mapa,
-    #grafico-barras,
-    #grafico-pres-sen,
-    #grafico-linhas {
-      min-height: 300px;
-    }
   }
 </style>
 </head>
@@ -95,12 +75,11 @@
     </div>
     <div class="painel">
       <div id="mapa"></div>
-      <div id="grafico-barras"></div>
-      <div id="grafico-pres-sen"></div>
-      <div id="grafico-linhas"></div>
+      <div id="grafico-linhas"></div>   <!-- gráfico de linha -->
+      <div id="grafico-barras"></div>   <!-- gráfico de barras -->
+      <div id="grafico-pres-sen"></div> <!-- presidente e senador -->
     </div>
   </div>
-
 
   <script>
     const municipioParaArquivo = {
