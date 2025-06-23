@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <title>Comparador de Eleições</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+    }
+
+    .container-geral {
+      display: flex;
+      height: 100vh;
+    }
+
+    .sidebar {
+      width: 220px;
+      background: #f9f9f9;
+      border-right: 1px solid #ccc;
+      padding: 10px;
+      box-sizing: border-box;
+    }
+
+    .controles {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .controles h3 {
+      margin: 0 0 10px 0;
+      font-size: 1.1rem;
+    }
+
+    .controles select {
+      font-size: 0.9rem;
+      padding: 4px;
+    }
+
+    .painel {
+      flex: 1;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      grid-template-rows: 50% 50%;
+    }
+
+    #mapa, #grafico-barras, #grafico-pres-sen, #grafico-linhas {
+      width: 100%;
+      height: 100%;
+    }
+
+    @media (max-width: 768px) {
+      .container-geral {
+        flex-direction: column;
+      }
+
+      .sidebar {
+        width: 100%;
+        border-right: none;
+        border-bottom: 1px solid #ccc;
+      }
+
+      .painel {
+        grid-template-columns: 1fr;
+        grid-template-rows: auto auto auto auto;
+      }
+
+      #mapa, #grafico-barras, #grafico-pres-sen, #grafico-linhas {
+        height: 300px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container-geral">
+    <div class="sidebar">
+      <div class="controles">
+        <h3>Comparador</h3>
+        <select id="municipio-select"><option value="">Município</option></select>
+        <select id="cargo-select"><option value="">Cargo</option></select>
+        <select id="candidato1-select"><option value="">1º Candidato</option></select>
+        <select id="candidato2-select"><option value="">2º Candidato</option></select>
+      </div>
+    </div>
+    <div class="painel">
+      <div id="mapa"></div>
+      <div id="grafico-barras"></div>
+      <div id="grafico-pres-sen"></div>
+      <div id="grafico-linhas"></div>
+    </div>
+  </div>
+
+
+  <script>
+    const municipioParaArquivo = {
+      "Alegrete": "votos_Alegrete.csv",
+      "Amaral Ferrador": "votos_Amaral Ferrador.csv",
+      "Arroio Grande": "votos_Arroio Grande.csv",
+      "Cachoeira do Sul": "votos_Cachoeira do Sul.csv",
+      "Camaquã": "votos_Camaquã.csv",
+      "Canguçu": "votos_Canguçu.csv",
+      "Canoas": "votos_Canoas.csv",
+      "Capão do Leão": "votos_Capão do Leão.csv",
+      "Chuvisca": "votos_Chuvisca.csv",
+      "Cristal": "votos_Cristal.csv",
+      "Dom Feliciano": "votos_Dom Feliciano.csv",
+      "Dom Pedrito": "votos_Dom Pedrito.csv",
+      "Esteio": "votos_Esteio.csv",
+      "Jaguarão": "votos_Jaguarão.csv",
+      "Palmares do Sul": "votos_Palmares do Sul.csv",
+      "Pedro Osório": "votos_Pedro Osório.csv",
+      "Pelotas": "votos_Pelotas.csv",
+      "Porto Alegre": "votos_Porto Alegre.csv",
+      "Rio Grande": "votos_Rio Grande.csv",
+      "Santa Vitória do Palmar": "votos_Santa Vitória do Palmar.csv",
+      "São Borja": "votos_São Borja.csv",
+      "São José do Norte": "votos_São José do Norte.csv",
+      "São Lourenço do Sul": "votos_São Lourenço do Sul.csv"
+    };
+
+    const anos = ["2014", "2018", "2022"];
+    const dadosPorAnoMunicipio = {};
+    let municipioAtual = null;
+    let cargoAtual = null;
+    let localSelecionado = null;
+
+    const municipioSelect = document.getElementById("municipio-select");
+    const cargoSelect = document.getElementById("cargo-select");
+    const candidato1Select = document.getElementById("candidato1-select");
+    const candidato2Select = document.getElementById("candidato2-select");
+
+    const graficoBarras = document.getElementById("grafico-barras");
+    const graficoLinhas = document.getElementById("grafico-linhas");
+    const graficoPresSen = document.getElementById("grafico-pres-sen");
+
+    const map = L.map("mapa").setView([-31.76, -52.33], 12);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '© OpenStreetMap contributors'
+    }).addTo(map);
+    const camadaMarcadores = L.layerGroup().addTo(map);
+
+    Object.keys(municipioParaArquivo).forEach(m => {
+      const opt = document.createElement("option");
+      opt.value = m;
+      opt.textContent = m;
+      municipioSelect.appendChild(opt);
+    });
+
+    municipioSelect.addEventListener("change", carregarTodosDados);
+    cargoSelect.addEventListener("change", () => {
+      cargoAtual = cargoSelect.value;
+      localSelecionado = null;
+      atualizarCandidatos();
+      atualizarMapa();
+    });
+    candidato1Select.addEventListener("change", atualizarGraficoLinhas);
+    candidato2Select.addEventListener("change", atualizarGraficoLinhas);
+
+    function carregarTodosDados() {
+      const municipio = municipioSelect.value;
+      municipioAtual = municipio;
+      localSelecionado = null;
+      if (!municipio) return;
+
+      let carregados = 0;
+      anos.forEach(ano => {
+        Papa.parse(`data/${ano}/${municipioParaArquivo[municipio]}`, {
+          download: true,
+          header: true,
+          skipEmptyLines: true,
+          dynamicTyping: false,
+          complete: res => {
+            if (!dadosPorAnoMunicipio[ano]) dadosPorAnoMunicipio[ano] = {};
+            const dadosCorrigidos = res.data
+              .map(d => ({
+                NM_VOTAVEL: (d.NM_VOTAVEL || "").trim().toUpperCase(),
+                QT_VOTOS: parseInt((d.QT_VOTOS || "0").replace(/[^\d]/g, ""), 10),
+                LOCAL: (d.LOCAL || d.Local || "").trim().toUpperCase(),
+                DS_CARGO_PERGUNTA: (d.DS_CARGO_PERGUNTA || "").trim().toUpperCase(),
+                SG_PARTIDO: (d.SG_PARTIDO || "#NULO#").trim().toUpperCase(),
+                NR_ZONA: (d.NR_ZONA || "").toString().padStart(3, "0"),
+                NR_SECAO: (d.NR_SECAO || "").toString().padStart(4, "0"),
+                LATITUDE: parseFloat(d.LATITUDE || d.Latitude || "0"),
+                LONGITUDE: parseFloat(d.LONGITUDE || d.Longitude || "0"),
+                NM_MUNICIPIO: (d.NM_MUNICIPIO || "").trim().toUpperCase()
+              }))
+              .filter(d => !isNaN(d.QT_VOTOS) && d.NM_VOTAVEL && d.DS_CARGO_PERGUNTA);
+
+            console.log(`✅ ${ano} - ${municipio}:`, dadosCorrigidos.length, "linhas válidas");
+
+            dadosPorAnoMunicipio[ano][municipio] = dadosCorrigidos;
+            carregados++;
+
+            if (carregados === anos.length) {
+              preencherCargos();
+              atualizarMapa();
+            }
+          },
+          error: err => {
+            console.error(`❌ Erro ao carregar ${ano}/${municipioParaArquivo[municipio]}`, err);
+          }
+        });
+      });
+    }
+
+    function preencherCargos() {
+      const dados = dadosPorAnoMunicipio["2022"]?.[municipioAtual] || [];
+      const cargos = [...new Set(dados.map(d => d.DS_CARGO_PERGUNTA))].sort();
+      cargoSelect.innerHTML = '<option value="">Selecione o cargo</option>';
+      cargos.forEach(c => {
+        const opt = document.createElement("option");
+        opt.value = c;
+        opt.textContent = c;
+        cargoSelect.appendChild(opt);
+      });
+    }
+
+    function atualizarCandidatos() {
+      const todos = anos.flatMap(ano =>
+        (dadosPorAnoMunicipio[ano]?.[municipioAtual] || [])
+          .filter(d => d.DS_CARGO_PERGUNTA === cargoAtual)
+          .map(d => d.NM_VOTAVEL)
+      );
+      const unicos = [...new Set(todos)].filter(Boolean).sort();
+      [candidato1Select, candidato2Select].forEach(select => {
+        select.innerHTML = '<option value="">Selecione o candidato</option>';
+        unicos.forEach(c => {
+          const opt = document.createElement("option");
+          opt.value = c;
+          opt.textContent = c;
+          select.appendChild(opt);
+        });
+      });
+    }
+
+    function atualizarMapa() {
+      camadaMarcadores.clearLayers();
+      if (!municipioAtual || !cargoAtual) return;
+
+      const dados = dadosPorAnoMunicipio["2022"]?.[municipioAtual] || [];
+      const votosPorLocal = {};
+      const latLong = {};
+      dados.forEach(d => {
+        if (d.DS_CARGO_PERGUNTA !== cargoAtual) return;
+        const loc = d.LOCAL;
+        const v = parseInt(d.QT_VOTOS);
+        votosPorLocal[loc] = (votosPorLocal[loc] || 0) + v;
+        if (!latLong[loc]) latLong[loc] = [parseFloat(d.LATITUDE), parseFloat(d.LONGITUDE)];
+      });
+
+      Object.entries(votosPorLocal).forEach(([local, votos]) => {
+        const coords = latLong[local];
+        if (!coords) return;
+        const circle = L.circle(coords, {
+          radius: Math.sqrt(votos) * 10,
+          color: 'blue', fillColor: '#66ccff', fillOpacity: 0.6
+        }).addTo(camadaMarcadores);
+        circle.bindTooltip(`${local}: ${votos} votos`);
+        circle.on('click', () => {
+          localSelecionado = local;
+          atualizarGraficoBarras();
+          atualizarGraficoLinhas();
+          atualizarGraficoPresSen();
+        });
+      });
+
+      atualizarGraficoBarras();
+      atualizarGraficoLinhas();
+      atualizarGraficoPresSen();
+    }
+
+    function atualizarGraficoBarras() {
+      const dados = dadosPorAnoMunicipio["2022"]?.[municipioAtual] || [];
+      if (!cargoAtual) return;
+      const filtrados = dados.filter(d =>
+        d.DS_CARGO_PERGUNTA === cargoAtual &&
+        (!localSelecionado || d.LOCAL === localSelecionado)
+      );
+      const contagem = {};
+      filtrados.forEach(d => {
+        const nome = d.NM_VOTAVEL;
+        const votos = parseInt(d.QT_VOTOS);
+        contagem[nome] = (contagem[nome] || 0) + votos;
+      });
+
+      const top10 = Object.entries(contagem).sort((a, b) => b[1] - a[1]).slice(0, 10);
+      Plotly.newPlot(graficoBarras, [{
+        x: top10.map(t => t[0]),
+        y: top10.map(t => t[1]),
+        type: 'bar',
+        marker: { color: 'orange' }
+      }], {
+        title: `Top 10 - ${localSelecionado || "Município"}`,
+        yaxis: { title: "Votos" }
+      });
+    }
+
+    function atualizarGraficoLinhas() {
+      const nome1 = candidato1Select.value;
+      const nome2 = candidato2Select.value;
+      if (!cargoAtual || !municipioAtual || (!nome1 && !nome2)) return;
+
+      const traces = [nome1, nome2].map((nome, i) => {
+        if (!nome) return null;
+        const votosAno = anos.map(ano => {
+          const dados = dadosPorAnoMunicipio[ano]?.[municipioAtual] || [];
+          return dados.filter(d =>
+            d.DS_CARGO_PERGUNTA === cargoAtual &&
+            d.NM_VOTAVEL === nome &&
+            (!localSelecionado || d.LOCAL === localSelecionado)
+          ).reduce((soma, d) => soma + parseInt(d.QT_VOTOS), 0);
+        });
+        return {
+          x: anos,
+          y: votosAno,
+          type: 'scatter',
+          mode: 'lines+markers',
+          name: nome,
+          marker: { color: i === 0 ? 'green' : 'blue' }
+        };
+      }).filter(Boolean);
+
+      Plotly.newPlot(graficoLinhas, traces, {
+        title: `Evolução de Votos - ${localSelecionado || "Município"}`,
+        yaxis: { title: "Votos" }
+      });
+    }
+
+function atualizarGraficoPresSen() {
+  const dados = dadosPorAnoMunicipio["2022"]?.[municipioAtual] || [];
+  const cargosAlvo = ["PRESIDENTE", "SENADOR"];
+  const container = graficoPresSen;
+  container.innerHTML = ""; // Limpa os gráficos anteriores
+
+  cargosAlvo.forEach(cargo => {
+    const filtrados = dados.filter(d =>
+      d.DS_CARGO_PERGUNTA === cargo &&
+      (!localSelecionado || d.LOCAL === localSelecionado)
+    );
+
+    const contagem = {};
+    filtrados.forEach(d => {
+      const nome = d.NM_VOTAVEL;
+      contagem[nome] = (contagem[nome] || 0) + parseInt(d.QT_VOTOS);
+    });
+
+    const nomes = Object.keys(contagem);
+    const votos = Object.values(contagem);
+
+    const div = document.createElement("div");
+    div.style.width = "100%";
+    div.style.height = "100%";
+    container.appendChild(div);
+
+    Plotly.newPlot(div, [{
+      type: 'pie',
+      labels: nomes,
+      values: votos,
+      textinfo: 'label+percent',
+      hole: 0.3
+    }], {
+      title: `${cargo} - ${localSelecionado || "Município"}`,
+      height: 400
+    });
+  });
+}
+
+  </script>
+</body>
+</html>
